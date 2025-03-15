@@ -1,5 +1,6 @@
 import 'package:daansure/constants.dart';
 import 'package:daansure/features/Home/ui/homeScreen.dart';
+import 'package:daansure/features/Milestones/ui/milestoneScreen.dart';
 import 'package:daansure/features/Profile/ui/profileScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,7 +28,7 @@ class _CustomNavState extends State<CustomNav>
   ];
 
   final List<Widget> _screens = [
-    const HomeScreen(),
+    const MilestoneScreen(),
     const HomeScreen(),
     const ProfileScreen(),
   ];

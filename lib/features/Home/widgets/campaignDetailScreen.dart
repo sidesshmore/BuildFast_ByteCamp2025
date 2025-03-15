@@ -43,7 +43,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.27.254:3000/ledger/transactions/${_campaignData!['id']}'),
+            'http://10.0.8.31:3000/ledger/transactions/${_campaignData!['id']}'),
       );
 
       if (response.statusCode == 200) {
@@ -131,7 +131,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
       // Make the HTTP request to record the transaction
       final httpResponse = await http.post(
-        Uri.parse('http://192.168.27.254:3000/ledger/add'),
+        Uri.parse('http://10.0.8.31:3000/ledger/add'),
         headers: {
           'Content-Type': 'application/json',
         },
