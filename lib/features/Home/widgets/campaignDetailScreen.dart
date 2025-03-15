@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:daansure/constants.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Add this import
 
 class CampaignDetailScreen extends StatefulWidget {
   final String campaignId;
@@ -19,13 +25,48 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   Map<String, dynamic>? _campaignData;
   Map<String, dynamic>? _ngoData;
   String? _errorMessage;
+  String final_amount = "0";
+  String userId = ""; // Variable to store user ID from shared preferences
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchCampaignDetails();
+  List<Map<String, dynamic>> _transactions = [];
+  bool _isTransactionsLoading = false;
+  bool _isTransactionsExpanded = false;
+
+// Add this method to your _CampaignDetailScreenState class
+  Future<void> _fetchTransactions() async {
+    if (_campaignData == null) return;
+
+    setState(() {
+      _isTransactionsLoading = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://192.168.27.254:3000/ledger/transactions/${_campaignData!['id']}'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _transactions =
+              data.map((item) => item as Map<String, dynamic>).toList();
+          _isTransactionsLoading = false;
+        });
+      } else {
+        setState(() {
+          _isTransactionsLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isTransactionsLoading = false;
+      });
+      log('Error fetching transactions: ${e.toString()}');
+    }
   }
 
+// Modify your _fetchCampaignDetails method to also fetch transactions
   Future<void> _fetchCampaignDetails() async {
     try {
       final supabase = Supabase.instance.client;
@@ -40,11 +81,149 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
         _ngoData = data['ngo_details'];
         _isLoading = false;
       });
+
+      // Fetch transactions after campaign details are loaded
+      _fetchTransactions();
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load campaign details';
         _isLoading = false;
       });
+    }
+  }
+
+  void handlePaymentErrorResponse(PaymentFailureResponse response) {
+    /*
+    * PaymentFailureResponse contains three values:
+    * 1. Error Code
+    * 2. Error Description
+    * 3. Metadata
+    * */
+    // showAlertDialog(context, "Payment Failed", "Code: ${response.code}\nDescription: ${response.message}\nMetadata:${response.error.toString()}");
+  }
+
+  void handlePaymentSuccessResponse(PaymentSuccessResponse response) async {
+    try {
+      // Get User Name
+      final supabase = Supabase.instance.client;
+
+      // Parse the amount to a double
+      double amountValue = double.parse(final_amount);
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+
+      int userIdInt = int.parse(userId!);
+
+      final userResponse = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', userIdInt)
+          .single();
+
+      // First, record the transaction in the ledger
+      final Map<String, dynamic> requestBody = {
+        "user_id": userId, // Using userId from shared preferences
+        "sender": userResponse['name'],
+        "receipt_id": response.paymentId,
+        "amount": final_amount,
+        "campaigns_id": widget.campaignId
+      };
+
+      // Make the HTTP request to record the transaction
+      final httpResponse = await http.post(
+        Uri.parse('http://192.168.27.254:3000/ledger/add'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      // Now update the campaign's funds_collected in the database
+      // final supabase = Supabase.instance.client;
+
+      // First, get the current funds_collected value
+      final campaign = await supabase
+          .from('campaigns')
+          .select('funds_collected')
+          .eq('id', widget.campaignId)
+          .single();
+
+      double currentFunds = campaign['funds_collected'];
+      double newFundsCollected = currentFunds + amountValue;
+
+      // Update the campaign with the new funds_collected value
+      await supabase.from('campaigns').update(
+          {'funds_collected': newFundsCollected}).eq('id', widget.campaignId);
+
+      // Check if the campaign is now completed (funds_collected >= funds_required)
+      if (newFundsCollected >= _campaignData!['funds_required']) {
+        await supabase
+            .from('campaigns')
+            .update({'is_completed': true}).eq('id', widget.campaignId);
+      }
+
+      // Show success message to the user
+      if (httpResponse.statusCode == 200 || httpResponse.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment successful! Thank you for your donation.'),
+            backgroundColor: Globals.customGreen,
+          ),
+        );
+
+        // Refresh the campaign details to show updated funds
+        _fetchCampaignDetails();
+      } else {
+        // Transaction logged in Razorpay but not in our ledger
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment processed but transaction logging failed.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        // Still refresh the campaign details
+        _fetchCampaignDetails();
+      }
+    } catch (e) {
+      // Handle any exceptions
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error processing payment: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      log('Payment error: ${e.toString()}');
+    }
+  }
+
+  void handleExternalWalletSelected(ExternalWalletResponse response) {
+    // showAlertDialog(context, "External Wallet Selected", "${response.walletName}");
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData(); // Load user data when the screen initializes
+    _fetchCampaignDetails();
+  }
+
+  // Add this method to load user data from SharedPreferences
+  Future<void> _loadUserData() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      // Get the user ID from shared preferences
+      String? storedUserId = prefs.getString('user_id');
+
+      if (storedUserId != null && storedUserId.isNotEmpty) {
+        setState(() {
+          userId = storedUserId;
+        });
+      } else {
+        // Handle case where user ID is not available
+        log('User ID not found in SharedPreferences');
+      }
+    } catch (e) {
+      log('Error loading user data: ${e.toString()}');
     }
   }
 
@@ -66,6 +245,108 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       ),
       bottomNavigationBar:
           _isLoading || _errorMessage != null ? null : _buildDonateButton(),
+    );
+  }
+
+  Widget _buildTransactionsList() {
+    return Container(
+      margin: EdgeInsets.only(bottom: Globals.screenHeight * 0.024),
+      decoration: BoxDecoration(
+        border: Border.all(color: Globals.customGreyLight),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          // Header (always visible)
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isTransactionsExpanded = !_isTransactionsExpanded;
+              });
+            },
+            child: Padding(
+              padding: EdgeInsets.all(Globals.screenWidth * 0.04),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Donations',
+                    style: TextStyle(
+                      fontSize: Globals.screenHeight * 0.02,
+                      fontWeight: FontWeight.bold,
+                      color: Globals.customBlack,
+                    ),
+                  ),
+                  Icon(
+                    _isTransactionsExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: Globals.customGreyDark,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Expandable content
+          if (_isTransactionsExpanded) ...[
+            Divider(height: 1, color: Globals.customGreyLight),
+            _isTransactionsLoading
+                ? Padding(
+                    padding: EdgeInsets.all(Globals.screenWidth * 0.04),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Globals.customGreen,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  )
+                : _transactions.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.all(Globals.screenWidth * 0.04),
+                        child: Center(
+                          child: Text(
+                            'No donations yet.',
+                            style: TextStyle(
+                              color: Globals.customGreyDark,
+                              fontSize: Globals.screenHeight * 0.016,
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        physics: NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: _transactions.length,
+                        separatorBuilder: (context, index) => Divider(
+                          height: 1,
+                          color: Globals.customGreyLight,
+                        ),
+                        itemBuilder: (context, index) {
+                          final transaction = _transactions[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(
+                              transaction['sender'] ?? 'Anonymous',
+                              style: TextStyle(
+                                fontSize: Globals.screenHeight * 0.016,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            trailing: Text(
+                              '₹${double.parse(transaction['amount'].toString()).toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: Globals.screenHeight * 0.016,
+                                fontWeight: FontWeight.bold,
+                                color: Globals.customGreen,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -294,6 +575,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   ),
                 ),
 
+                SizedBox(height: Globals.screenHeight * 0.024),
+                _buildTransactionsList(),
                 // About campaign
                 SizedBox(height: Globals.screenHeight * 0.024),
                 Text(
@@ -313,7 +596,6 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     height: 1.5,
                   ),
                 ),
-
                 // About NGO
                 SizedBox(height: Globals.screenHeight * 0.024),
                 Text(
@@ -437,6 +719,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     return;
                   }
 
+                  setState(() {
+                    final_amount = amount.toString();
+                  });
+
                   // Close modal
                   Navigator.pop(context);
 
@@ -449,6 +735,30 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       backgroundColor: Globals.customGreen,
                     ),
                   );
+
+                  Razorpay razorpay = Razorpay();
+                  var options = {
+                    'key': 'rzp_test_6jaWR4JZLFipOk',
+                    'amount': amount * 100,
+                    'name': 'DaanSure',
+                    'description': 'Ensuring every donation is used right',
+                    'retry': {'enabled': true, 'max_count': 1},
+                    'send_sms_hash': true,
+                    'prefill': {
+                      'contact': '8888888888',
+                      'email': 'test@razorpay.com'
+                    },
+                    'external': {
+                      'wallets': ['paytm']
+                    }
+                  };
+                  razorpay.on(
+                      Razorpay.EVENT_PAYMENT_ERROR, handlePaymentErrorResponse);
+                  razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS,
+                      handlePaymentSuccessResponse);
+                  razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET,
+                      handleExternalWalletSelected);
+                  razorpay.open(options);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Globals.customGreen,
