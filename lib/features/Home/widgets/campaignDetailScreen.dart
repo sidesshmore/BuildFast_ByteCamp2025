@@ -361,6 +361,122 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     );
   }
 
+  Future<void> _showPaymentModal() async {
+    // Controller for the donation amount text field
+    final amountController = TextEditingController();
+
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 20,
+            left: 20,
+            right: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Donate to ${_campaignData!['campaign_name']}',
+                style: TextStyle(
+                  fontSize: Globals.screenHeight * 0.022,
+                  fontWeight: FontWeight.bold,
+                  color: Globals.customBlack,
+                ),
+              ),
+              SizedBox(height: Globals.screenHeight * 0.02),
+              Text(
+                'Enter donation amount (₹)',
+                style: TextStyle(
+                  fontSize: Globals.screenHeight * 0.016,
+                  color: Globals.customGreyDark,
+                ),
+              ),
+              SizedBox(height: Globals.screenHeight * 0.01),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  prefixText: '₹ ',
+                  prefixStyle: TextStyle(
+                    color: Globals.customBlack,
+                    fontSize: Globals.screenHeight * 0.018,
+                  ),
+                  hintText: '1000',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Globals.customGreyLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        BorderSide(color: Globals.customGreen, width: 2),
+                  ),
+                ),
+              ),
+              SizedBox(height: Globals.screenHeight * 0.03),
+              ElevatedButton(
+                onPressed: () {
+                  // Get amount from the text field
+                  final amount = double.tryParse(amountController.text);
+                  if (amount == null || amount <= 0) {
+                    // Show error for invalid amount
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please enter a valid amount'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Close modal
+                  Navigator.pop(context);
+
+                  // TODO: Implement payment processing
+                  // For now, just show a success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Processing payment of ₹${amount.toStringAsFixed(2)}'),
+                      backgroundColor: Globals.customGreen,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Globals.customGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    vertical: Globals.screenHeight * 0.016,
+                  ),
+                  minimumSize: Size(double.infinity, 0),
+                ),
+                child: Text(
+                  'PAY',
+                  style: TextStyle(
+                    fontSize: Globals.screenHeight * 0.018,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              SizedBox(height: Globals.screenHeight * 0.02),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildNGOInfoItem(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,8 +533,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
         onPressed: _campaignData!['is_completed']
             ? null
             : () {
-                // Implement donation logic
-                // Navigate to donation screen or show donation dialog
+                _showPaymentModal();
               },
         style: ElevatedButton.styleFrom(
           backgroundColor: Globals.customGreen,
