@@ -110,6 +110,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator(
+            color: Globals.customGreen,
+          ),
+        ),
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('userId');
+      
+      // Sign out from Supabase
+      await Supabase.instance.client.auth.signOut();
+      
+      if (mounted) {
+        // Pop the loading dialog
+        Navigator.pop(context);
+        
+        // Navigate to login screen and clear the navigation stack
+        Navigator.pushNamedAndRemoveUntil(
+          context, 
+          '/login', 
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      // Pop the loading dialog if there's an error
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to logout. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Globals.initialize(context);
@@ -284,6 +328,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               _buildPasswordField(),
+              SizedBox(height: Globals.screenHeight * 0.02),
+              _buildLogoutButton(),
             ],
           ),
         ),
@@ -406,6 +452,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         SizedBox(height: Globals.screenHeight * 0.025),
       ],
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _logout,
+        icon: Icon(
+          Icons.logout,
+          color: Colors.white,
+        ),
+        label: Text(
+          'Logout',
+          style: TextStyle(
+            fontSize: Globals.screenHeight * 0.018,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          padding: EdgeInsets.symmetric(
+            vertical: Globals.screenHeight * 0.02,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+      ),
     );
   }
 }
