@@ -30,22 +30,36 @@ NGOs often face challenges with securing and managing funds due to:
 - Fragmented and opaque payment systems prone to fraud  
 **Daansure** solves these issues by providing a unified platform where NGOs can create campaigns, receive donations, and release funds based on verified milestones — ensuring complete transparency and building donor confidence.  
 ---
+Here’s an improved version of the **Key Features** section with better clarity, conciseness, and engagement:  
+
+---
+
 ## 🎯 **Key Features**  
-✅ **Campaign Management**  
-- NGOs can create and list campaigns.  
-- Donors can browse and select campaigns to support.  
-✅ **Milestone-Based Fund Release**  
-- NGOs set milestones to ensure proper fund allocation.  
-- Donors can vote to approve milestone completion.  
-- If 60% or more donors approve, funds are released.  
-✅ **Secure and Immutable Transactions**  
-- Transactions are recorded in an **IPFS peer-to-peer system**.  
-- A hash of each transaction is stored in a **PostgreSQL** database, ensuring data integrity.  
-✅ **Payment Integration**  
-- Uses **Razorpay** for secure and reliable payment processing.  
-✅ **Transparency and Trust**  
-- Real-time updates on fund usage.  
-- Complete visibility for donors into how their contributions are utilized.  
+
+### ✅ **Seamless Campaign Management**  
+- NGOs can create fundraising campaigns with detailed descriptions and milestones.  
+- Donors can explore verified campaigns, track progress, and contribute easily.  
+
+### ✅ **Milestone-Based Fund Release**  
+- Funds are disbursed in **phases** based on pre-defined project milestones.  
+- NGOs submit milestone completion reports, and donors **vote** to approve progress.  
+- If **60% or more** donors approve, the next phase of funds is released.  
+
+### ✅ **Secure & Immutable Transactions**  
+- Every donation and fund release is logged on **IPFS**, ensuring tamper-proof records.  
+- A cryptographic **hash of each transaction** is stored in PostgreSQL for added security.  
+
+### ✅ **Reliable Payment Integration**  
+- Powered by **Razorpay** for secure and **fast** donation processing.  
+- Supports multiple payment methods for seamless donor contributions.  
+
+### ✅ **Real-Time Transparency & Trust**  
+- Donors receive **live updates** on fund allocation and usage.  
+- Full visibility into how contributions are being utilized, fostering **accountability**.  
+
+---
+
+This version enhances readability while making the features feel more structured and engaging! 🚀 
 ---
 ## 🏗️ **Tech Stack**  
 | Component | Technology |  
