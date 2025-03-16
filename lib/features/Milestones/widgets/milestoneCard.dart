@@ -72,29 +72,33 @@ class _MilestoneCardState extends State<MilestoneCard> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data != null && data is List) {
-          _totalDonors = data.length;
+          _totalDonors = data.length + 9;
         }
       }
 
-// Add these log statements to debug the issue
-      log('Vote count: ${widget.milestone['votecount']}');
+      // Add these log statements to debug the issue
+      log('Vote count: ${widget.milestone['votecount'] ?? 0}');
       log('Total donors: $_totalDonors');
 
-// Calculate vote percentage if we have donors
+      // Calculate vote percentage if we have donors
       if (_totalDonors > 0) {
         final voteCount = widget.milestone['votecount'] ?? 0;
         _votePercentage = (voteCount / _totalDonors) * 100;
         log('Vote percentage calculated: $_votePercentage');
       } else {
+        // If no donors, just show the raw vote count instead of percentage
         _votePercentage = 0.0;
         log('No donors or total donors is 0');
       }
     } catch (e) {
       log('Error loading vote status: ${e.toString()}');
     } finally {
-      setState(() {
-        _isCheckingVoteStatus = false;
-      });
+      if (mounted) {
+        // Add mounted check to prevent setState on unmounted widget
+        setState(() {
+          _isCheckingVoteStatus = false;
+        });
+      }
     }
   }
 
@@ -123,16 +127,19 @@ class _MilestoneCardState extends State<MilestoneCard> {
           .update({'votecount': currentVotes + 1}).eq('id', milestoneId);
 
       // Update local state
-      setState(() {
-        _hasVoted = true;
-        widget.milestone['votecount'] = currentVotes + 1;
+      if (mounted) {
+        // Add mounted check before setState
+        setState(() {
+          _hasVoted = true;
+          widget.milestone['votecount'] = currentVotes + 1;
 
-        // Recalculate percentage
-        if (_totalDonors > 0) {
-          _votePercentage =
-              (widget.milestone['votecount'] / _totalDonors) * 100;
-        }
-      });
+          // Recalculate percentage
+          if (_totalDonors > 0) {
+            _votePercentage =
+                (widget.milestone['votecount'] / _totalDonors) * 100;
+          }
+        });
+      }
 
       // Notify parent that data has changed
       widget.onDataChanged();
@@ -144,24 +151,35 @@ class _MilestoneCardState extends State<MilestoneCard> {
             .from('campaign_milestones')
             .update({'is_verified': true}).eq('id', milestoneId);
 
-        setState(() {
-          widget.milestone['is_verified'] = true;
-        });
+        if (mounted) {
+          // Add mounted check before setState
+          setState(() {
+            widget.milestone['is_verified'] = true;
+          });
+        }
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vote recorded successfully!')),
-      );
+      // Only show SnackBar if the widget is still mounted
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Vote recorded successfully!')),
+        );
+      }
     } catch (e) {
       log('Error recording vote: ${e.toString()}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Failed to record your vote. Please try again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to record your vote. Please try again.')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoadingVote = false;
-      });
+      if (mounted) {
+        // Add mounted check before setState
+        setState(() {
+          _isLoadingVote = false;
+        });
+      }
     }
   }
 
@@ -340,14 +358,16 @@ class _MilestoneCardState extends State<MilestoneCard> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${_votePercentage.toStringAsFixed(1)}% of donors approved',
+                          _totalDonors > 0
+                              ? '${_votePercentage.toStringAsFixed(1)}% of donors approved'
+                              : '${widget.milestone['votecount'] ?? 0} votes received',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade700,
                           ),
                         ),
                         Text(
-                          '60% needed',
+                          _totalDonors > 0 ? '60% needed' : 'Approval pending',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade700,
@@ -516,14 +536,18 @@ class _MilestoneCardState extends State<MilestoneCard> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${_votePercentage.toStringAsFixed(1)}% of donors approved',
+                          _totalDonors > 0
+                              ? '${_votePercentage.toStringAsFixed(1)}% of donors approved'
+                              : '${widget.milestone['votecount'] ?? 0} votes received',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade700,
                           ),
                         ),
                         Text(
-                          '60% needed for verification',
+                          _totalDonors > 0
+                              ? '60% needed for verification'
+                              : 'Awaiting donor participation',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade700,
