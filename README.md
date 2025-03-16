@@ -33,6 +33,11 @@ NGOs often face challenges with securing and managing funds due to:
 Here’s an improved version of the **Key Features** section with better clarity, conciseness, and engagement:  
 
 ---
+## ⚙️ **Process**  
+![PHOTO-2025-03-16-08-10-54](https://github.com/user-attachments/assets/67825533-1455-45e1-8413-113a03bcfbe8)
+![PHOTO-2025-03-16-08-26-53](https://github.com/user-attachments/assets/66150906-b35f-4f67-aed5-f5e8d83a2ed6)
+
+---
 
 ## 🎯 **Key Features**  
 
