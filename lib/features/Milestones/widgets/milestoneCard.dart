@@ -466,7 +466,7 @@ class _MilestoneCardState extends State<MilestoneCard> {
                       'Not set'),
               SizedBox(height: 16),
               _buildDetailRow(Icons.attach_money, 'Funding Required',
-                  '\$${milestone['funding_required']?.toStringAsFixed(2) ?? '0.00'}'),
+                  '\₹${milestone['funding_required']?.toStringAsFixed(2) ?? '0.00'}'),
               SizedBox(height: 16),
               _buildDetailRow(
                 verified ? Icons.verified : Icons.pending,
