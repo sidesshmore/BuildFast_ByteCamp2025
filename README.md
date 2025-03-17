@@ -8,6 +8,7 @@
 ![alt text](https://img.shields.io/badge/Supabase-181818?style=for-the-badge&logo=supabase&logoColor=white) 
 ![alt text](https://img.shields.io/badge/Express.js-white?style=for-the-badge)
 ![alt text](https://img.shields.io/badge/PostgreSQL-white?style=for-the-badge&logo=postgresql&logoColor=316192)
+<br>
 **Daansure** is a Flutter-based app that empowers NGOs to secure and manage funds transparently, ensuring accountability and donor trust through a blockchain-based centralized ledger.  
 ---
 
